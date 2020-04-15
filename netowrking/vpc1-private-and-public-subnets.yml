@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Deploy a VPC with public/private subnets
+
+Metadata: 
+  # Control the UI display when running this template from the AWS Management Console:
+  AWS::CloudFormation::Interface: 
+    ParameterGroups: 
+      - Label: 
+          default: "Network Configuration"
+        Parameters: 
+          - VPCName
+
+Parameters:
+  VPCName:
+    Type: String
+    Default: "CUSTOM VPC"
+    Description: "VPC name"
+  VPCCirdBlock:
+    Type: Number
+    Default: 10.0.0.0/16
+    Description: "Cidr block for VPC"
+  VPCPublicCirdBlock:
+    Type: Number
+    Default: 10.0.0.0/24
+    Description: "Cidr block for Public Subnet"
+  VPCPrivateAZACidrBlock:
+    Type: Number
+    Default: 10.0.1.0/24
+    Description: "Cidr block for Private A Subnet"
+  VPCPrivateAZBCidrBlock:
+    Type: Number
+    Default: 10.0.2.0/24
+    Description: "Cidr block for Private B Subnet"
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCCirdBlock
+      EnableDnsHostnames: true
+      Tags:
+      - Key: Name
+        Value: !Ref VPCName
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Join ['', [!Ref "VPCName", " Internet Gateway" ]]
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnetAZA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref VPCPublicCirdBlock
+      AvailabilityZone: !Select
+        - '0'
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: !Join ['', [!Ref "VPCName", "-PublicSubnetA" ]]
+  
+  PrivateSubnetAZA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref VPCPrivateAZACidrBlock
+      AvailabilityZone: !Select 
+        - '0'
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: !Join ['', [!Ref "VPCName", "-PrivateSubnetA" ]]
+
+  PrivateSubnetAZB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref VPCPrivateAZBCidrBlock
+      AvailabilityZone: !Select 
+        - '1'
+        - !GetAZs ''
+      Tags:
+        - Key: Name
+          Value: !Join ['', [!Ref "VPCName", "-PrivateSubnetB" ]]
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join ['', [!Ref "VPCName", "-PublicRouteTable" ]]
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetAZA
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join ['', [!Ref "VPCName", "-PrivateRouteTableA" ]]
+
+  PrivateSubnetRouteTableAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetAZA
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateRouteTableB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Join ['', [!Ref "VPCName", "-PrivateRouteTableB" ]]
+
+  PrivateSubnetRouteTableAssociationB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetAZB
+      RouteTableId: !Ref PrivateRouteTableB
+
+Outputs:
+  VPC:
+    Description: VPC
+    Value: !Ref VPC
+  AZ1:
+    Description: Availability Zone A
+    Value: !GetAtt 
+      - PublicSubnetAZA
+      - AvailabilityZone

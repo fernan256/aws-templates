@@ -1,0 +1,14 @@
+[
+	{
+		"ParameterKey": "NumberOfAZs",
+		"ParameterValule": "2"
+	},
+	{
+		"ParameterKey": "PrivateSubnets",
+		"ParameterValule": "True"
+	},
+	{
+		"ParameterKey": "NATType",
+		"ParameterValule": "EC2 NAT Instance"
+	}
+]
